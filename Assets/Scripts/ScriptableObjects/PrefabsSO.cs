@@ -11,5 +11,6 @@ namespace ScriptableObjects
 		public GridCell GridCellPrefab;
 		public Wall WallPrefab;
 		public Level LevelPrefab;
+		public ParticleSystem PaintParticle;
 	}
 }

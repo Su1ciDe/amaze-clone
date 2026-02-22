@@ -26,6 +26,8 @@ namespace GridSystem
 
 		private float xOffset, yOffset;
 
+		private ParticleSystem paintParticle;
+
 		private void OnEnable()
 		{
 			PlayerInputs.OnInput += HandleInput;
@@ -40,6 +42,8 @@ namespace GridSystem
 
 		public void Setup(LevelDataSO levelData)
 		{
+			SetupParticle(levelData.ColorType);
+			
 			size = levelData.GridSize;
 			gridCells = new GridCellMatrix(size.x, size.y);
 
@@ -81,10 +85,22 @@ namespace GridSystem
 					gridCells[x, y] = cell;
 				}
 			}
+
+			
+		}
+
+		private void SetupParticle(ColorType colorType)
+		{
+			paintParticle = Instantiate(GameManager.Instance.PrefabsSO.PaintParticle);
+			var main = paintParticle.main;
+			main.startColor = GameManager.Instance.ColorsSO.Colors[colorType];
 		}
 
 		private void OnCellColored(GridCell cell)
 		{
+			paintParticle.transform.position = cell.transform.position;
+			paintParticle.Play();
+
 			cell.OnColored -= OnCellColored;
 			TotalColoredCellCount++;
 

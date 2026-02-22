@@ -20,3 +20,5 @@ MonoBehaviour:
     type: 3}
   LevelPrefab: {fileID: 305913740716915953, guid: a4276edd1cbd05743a9429c75732d19f,
     type: 3}
+  PaintParticle: {fileID: 909720420999177916, guid: c07fae2b01d96844da670c2f6b832499,
+    type: 3}

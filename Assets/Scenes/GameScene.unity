@@ -1053,6 +1053,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   levels:
   - {fileID: 11400000, guid: 957e2aea45ceaf940b4f79bbe099b18d, type: 2}
+  - {fileID: 11400000, guid: 625f39a5598f6784b9533ed6c5bc24ea, type: 2}
+  - {fileID: 11400000, guid: 259db56ca580a2d44b0e27a299e1acef, type: 2}
+  - {fileID: 11400000, guid: 5921ab6e760f25841a72417aea3f2a31, type: 2}
+  - {fileID: 11400000, guid: aae7ca9b52bd81d4eb625d321f80c523, type: 2}
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -1092,7 +1096,7 @@ Light:
     m_Type: 2
     m_Resolution: -1
     m_CustomResolution: -1
-    m_Strength: 0.6
+    m_Strength: 0.4
     m_Bias: 0.05
     m_NormalBias: 0.4
     m_NearPlane: 0.2
@@ -1127,7 +1131,7 @@ Light:
   m_AreaSize: {x: 1, y: 1}
   m_BounceIntensity: 1
   m_ColorTemperature: 5000
-  m_UseColorTemperature: 1
+  m_UseColorTemperature: 0
   m_BoundingSphereOverride: {x: 0, y: 0, z: 0, w: 0}
   m_UseBoundingSphereOverride: 0
   m_UseViewFrustumForShadowCasterCull: 1

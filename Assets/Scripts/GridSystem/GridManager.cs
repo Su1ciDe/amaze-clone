@@ -4,6 +4,7 @@ using GamePlay;
 using Managers;
 using ScriptableObjects;
 using UnityEngine;
+using UnityEngine.Events;
 using Utilities;
 
 namespace GridSystem
@@ -28,6 +29,9 @@ namespace GridSystem
 
 		private ParticleSystem paintParticle;
 
+		public static event UnityAction<int> OnMoveCompleted = moveCount => { };
+		public static event UnityAction<int, int> OnPaintCompleted = (cellCount, totalPaintedCount) => { };
+
 		private void OnEnable()
 		{
 			PlayerInputs.OnInput += HandleInput;
@@ -43,7 +47,7 @@ namespace GridSystem
 		public void Setup(LevelDataSO levelData)
 		{
 			SetupParticle(levelData.ColorType);
-			
+
 			size = levelData.GridSize;
 			gridCells = new GridCellMatrix(size.x, size.y);
 
@@ -85,8 +89,6 @@ namespace GridSystem
 					gridCells[x, y] = cell;
 				}
 			}
-
-			
 		}
 
 		private void SetupParticle(ColorType colorType)
@@ -136,14 +138,17 @@ namespace GridSystem
 				if (pathCells[^1].Coordinates != currentPos)
 				{
 					anyBallMoved = true;
-					moveTasks.Add(ball.MoveToCell(pathCells, GameManager.Instance.ColorsSO.Colors[LevelManager.Instance.CurrentLevelData.ColorType], direction));
+					moveTasks.Add(ball.MoveToCell(pathCells, GameManager.Instance.ColorsSO.Colors[LevelManager.Instance.CurrentLevelData.ColorType]));
 				}
 			}
 
 			if (anyBallMoved)
 			{
 				LevelManager.Instance.CurrentLevel.TotalMoves++;
+				OnMoveCompleted.Invoke(LevelManager.Instance.CurrentLevel.TotalMoves);
 				await UniTask.WhenAll(moveTasks);
+
+				OnPaintCompleted.Invoke(CellCount, TotalColoredCellCount);
 			}
 		}
 
@@ -158,23 +163,17 @@ namespace GridSystem
 
 				// Check if next position is out of bounds
 				if (nextPos.x < 0 || nextPos.x >= size.x || nextPos.y < 0 || nextPos.y >= size.y)
-				{
 					return pathCells;
-				}
 
 				var nextCell = gridCells[nextPos.x, nextPos.y];
 
 				// Check if next cell is inactive (None type)
 				if (!nextCell.IsActive)
-				{
 					return pathCells;
-				}
 
 				// Check if next cell has a wall or another ball
 				if (nextCell.CurrentNode is Wall or Ball)
-				{
 					return pathCells;
-				}
 
 				// Move to next position
 				currentPos = nextPos;

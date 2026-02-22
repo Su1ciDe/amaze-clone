@@ -27,7 +27,12 @@ namespace GamePlay
 			cancellationTokenOnDestroy = this.GetCancellationTokenOnDestroy();
 		}
 
-		public async UniTask MoveToCell(List<GridCell> pathCells, Color trailColor, Directions direction)
+		private void OnDestroy()
+		{
+			transform.DOKill();
+		}
+
+		public async UniTask MoveToCell(List<GridCell> pathCells, Color trailColor)
 		{
 			if (IsMoving) return;
 

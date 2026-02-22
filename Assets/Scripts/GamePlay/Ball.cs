@@ -1,8 +1,11 @@
-﻿using Cysharp.Threading.Tasks;
+﻿using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
 using DG.Tweening;
 using GridSystem;
 using Interfaces;
+using Managers;
 using UnityEngine;
+using UnityEngine.Events;
 using Utilities;
 
 namespace GamePlay
@@ -12,31 +15,40 @@ namespace GamePlay
 		public GridCell CurrentGridCell { get; set; }
 		public Transform GetTransform() => transform;
 
-		[Header("Movement Settings")]
-		[SerializeField] private float moveDuration = 0.3f;
-
 		public bool IsMoving { get; private set; }
 
-		public async UniTask MoveToCell(GridCell targetCell)
+		public event UnityAction OnMoveComplete = () => { };
+
+		public async UniTask MoveToCell(List<GridCell> pathCells, Color trailColor, Directions direction)
 		{
 			if (IsMoving) return;
 
 			IsMoving = true;
+			var targetCell = pathCells[^1];
 
 			// Remove from the current cell
 			if (CurrentGridCell)
-			{
 				CurrentGridCell.CurrentNode = null;
-			}
 
-			// Move to the target cell
-			await transform.DOMove(targetCell.transform.position, moveDuration).SetEase(Ease.InQuad).ToUniTask();
+			transform.LookAt(targetCell.transform.position);
+			transform.DOScale(new Vector3(transform.localScale.x * .5f, transform.localScale.y, transform.localScale.z * 1.5f), .2f);
 
+			// Move to the target cell and color the cells along the path
+			await transform.DOPath(pathCells.ConvertAll(cell => cell.transform.position).ToArray(), GameManager.Instance.GameSettingsSO.BallSpeed).SetSpeedBased(true).SetEase(Ease.InQuad)
+				.OnWaypointChange(waypoint => pathCells[waypoint].ChangeColor(trailColor)).ToUniTask();
+
+			transform.DOKill();
+			transform.DOScale(new Vector3(transform.localScale.x * 1.5f, transform.localScale.y, transform.localScale.z * 0.5f), .1f).OnComplete(() =>
+			{
+				transform.DOScale(Vector3.one, .1f);
+			});
+			
 			// Set new cell
 			CurrentGridCell = targetCell;
 			targetCell.CurrentNode = this;
 
 			IsMoving = false;
+			OnMoveComplete.Invoke();
 		}
 	}
 }

@@ -101,13 +101,12 @@ namespace GridSystem
 			foreach (var ball in balls)
 			{
 				var currentPos = ball.CurrentGridCell.Coordinates;
-				var targetPos = FindTargetPosition(currentPos, dir);
+				var pathCells = FindTargetPosition(currentPos, dir);
 
-				if (targetPos != currentPos)
+				if (pathCells[^1].Coordinates != currentPos)
 				{
 					anyBallMoved = true;
-					var targetCell = gridCells[targetPos.x, targetPos.y];
-					moveTasks.Add(ball.MoveToCell(targetCell));
+					moveTasks.Add(ball.MoveToCell(pathCells, GameManager.Instance.ColorsSO.Colors[LevelManager.Instance.CurrentLevelData.ColorType], direction));
 				}
 			}
 
@@ -118,9 +117,10 @@ namespace GridSystem
 			}
 		}
 
-		private Vector2Int FindTargetPosition(Vector2Int startPos, Vector2Int direction)
+		private List<GridCell> FindTargetPosition(Vector2Int startPos, Vector2Int direction)
 		{
 			var currentPos = startPos;
+			var pathCells = new List<GridCell> { gridCells[currentPos.x, currentPos.y] };
 
 			while (true)
 			{
@@ -129,7 +129,7 @@ namespace GridSystem
 				// Check if next position is out of bounds
 				if (nextPos.x < 0 || nextPos.x >= size.x || nextPos.y < 0 || nextPos.y >= size.y)
 				{
-					return currentPos;
+					return pathCells;
 				}
 
 				var nextCell = gridCells[nextPos.x, nextPos.y];
@@ -137,18 +137,33 @@ namespace GridSystem
 				// Check if next cell is inactive (None type)
 				if (!nextCell.IsActive)
 				{
-					return currentPos;
+					return pathCells;
 				}
 
 				// Check if next cell has a wall or another ball
 				if (nextCell.CurrentNode is Wall or Ball)
 				{
-					return currentPos;
+					return pathCells;
 				}
 
 				// Move to next position
 				currentPos = nextPos;
+				pathCells.Add(gridCells[nextPos.x, nextPos.y]);
 			}
+		}
+
+		private List<GridCell> GetPathCells(Vector2Int startPos, Vector2Int targetPos, Vector2Int direction)
+		{
+			var pathCells = new List<GridCell>();
+			var currentPos = startPos + direction;
+
+			while (currentPos != targetPos + direction)
+			{
+				pathCells.Add(gridCells[currentPos.x, currentPos.y]);
+				currentPos += direction;
+			}
+
+			return pathCells;
 		}
 
 		#endregion

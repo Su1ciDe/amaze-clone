@@ -7,5 +7,6 @@ namespace Managers
 	{
 		public PrefabsSO PrefabsSO;
 		public ColorsSO ColorsSO;
+		public GameSettingsSO GameSettingsSO;
 	}
 }

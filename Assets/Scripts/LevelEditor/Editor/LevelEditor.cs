@@ -200,7 +200,7 @@ namespace LevelEditor.Editor
 		{
 			scrollPosition = GUILayout.BeginScrollView(scrollPosition);
 
-			for (int y = gridHeight - 1; y >= 0; y--)
+			for (int y = 0; y < gridHeight; y++)
 			{
 				GUILayout.BeginHorizontal();
 				for (int x = 0; x < gridWidth; x++)

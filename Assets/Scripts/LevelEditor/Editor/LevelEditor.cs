@@ -1,8 +1,11 @@
-﻿using GamePlay;
+using System.Collections.Generic;
+using System.Linq;
+using GamePlay;
 using GridSystem;
 using ScriptableObjects;
 using UnityEditor;
 using UnityEngine;
+using Utilities;
 
 namespace LevelEditor.Editor
 {
@@ -21,12 +24,14 @@ namespace LevelEditor.Editor
 		private const int CELL_SIZE = 40;
 		private const string path = "Assets/ScriptableObjects/Levels";
 
+		private bool hasValidated;
+		
 		[MenuItem("Tools/Level Editor")]
 		private static void ShowWindow()
 		{
 			var window = GetWindow<LevelEditor>();
 			window.titleContent = new GUIContent("Level Editor");
-			window.minSize = new Vector2(550, 750);
+			window.minSize = new Vector2(550, 600);
 			window.Show();
 		}
 
@@ -45,6 +50,8 @@ namespace LevelEditor.Editor
 					grid[x, y] = NodeType.Cell;
 				}
 			}
+
+			hasValidated = false;
 		}
 
 		private void OnGUI()
@@ -58,12 +65,11 @@ namespace LevelEditor.Editor
 			GUILayout.Space(10);
 			DrawNodeTypeSelection();
 			GUILayout.Space(10);
-			// DrawRandomGrid();
-			GUILayout.Space(10);
 			DrawGrid();
 			GUILayout.Space(10);
 			GuiLine();
 
+			DrawValidate();
 			// DrawRandomizer();
 		}
 
@@ -87,7 +93,14 @@ namespace LevelEditor.Editor
 
 			if (GUILayout.Button("Save", GUILayout.Width(80), GUILayout.Height(20)))
 			{
-				Save();
+				if (hasValidated)
+				{
+					Save();
+				}
+				else
+				{
+					EditorUtility.DisplayDialog("Validation", "Please validate the maze before saving.", "OK");
+				}
 			}
 
 			EditorGUILayout.EndHorizontal();
@@ -225,6 +238,7 @@ namespace LevelEditor.Editor
 			{
 				if (e.type is EventType.MouseDown or EventType.MouseDrag)
 				{
+					hasValidated = false;
 					if (e.button == 0) // Left click
 					{
 						grid[x, y] = selectedNodeType;
@@ -287,6 +301,139 @@ namespace LevelEditor.Editor
 			Handles.color = color;
 			Handles.DrawLine(topLeft, bottomRight, 3f);
 			Handles.DrawLine(topRight, bottomLeft, 3f);
+		}
+
+		#endregion
+
+		#region Validation
+
+		private void DrawValidate()
+		{
+			if (GUILayout.Button("Validate", GUILayout.Height(20)))
+			{
+				ValidateMaze();
+			}
+		}
+
+		private void ValidateMaze()
+		{
+			// Collect ball positions and paintable cells
+			var ballPositions = new List<Vector2Int>();
+			var paintableCount = 0;
+
+			for (int x = 0; x < gridWidth; x++)
+			{
+				for (int y = 0; y < gridHeight; y++)
+				{
+					var nodeType = grid[x, y];
+					if (nodeType == NodeType.Ball)
+					{
+						ballPositions.Add(new Vector2Int(x, y));
+						paintableCount++;
+					}
+					else if (nodeType == NodeType.Cell)
+					{
+						paintableCount++;
+					}
+				}
+			}
+
+			if (ballPositions.Count == 0)
+			{
+				EditorUtility.DisplayDialog("Validation Failed", "The maze has no balls. Add at least one ball.", "OK");
+				return;
+			}
+
+			if (paintableCount == 0)
+			{
+				EditorUtility.DisplayDialog("Validation Failed", "Maze has no paintable cells.", "OK");
+				return;
+			}
+
+			// BFS over states
+			var cardinalDirs = new[]
+			{
+				Direction.GetDirection(Directions.Right),
+				Direction.GetDirection(Directions.Left),
+				Direction.GetDirection(Directions.Up),
+				Direction.GetDirection(Directions.Down)
+			};
+			var initialState = ballPositions.ToList();
+			var initialPainted = new HashSet<Vector2Int>(ballPositions);
+			var visitedStates = new Dictionary<string, HashSet<Vector2Int>> { [MakeStateKey(initialState)] = new HashSet<Vector2Int>(initialPainted) };
+			var queue = new Queue<(List<Vector2Int> state, HashSet<Vector2Int> painted)>();
+			queue.Enqueue((initialState, initialPainted));
+			var maxPainted = initialPainted.Count;
+
+			while (queue.Count > 0)
+			{
+				var (state, painted) = queue.Dequeue();
+
+				foreach (var dir in cardinalDirs)
+				{
+					var newState = new List<Vector2Int>();
+					var newPainted = new HashSet<Vector2Int>(painted);
+
+					foreach (var pos in state)
+					{
+						var landing = GetSlideEnd(pos, dir);
+						newState.Add(landing);
+						for (var p = pos;; p += dir)
+						{
+							newPainted.Add(p);
+							if (p == landing) 
+								break;
+						}
+					}
+
+					var key = MakeStateKey(newState);
+					var shouldEnqueue = !visitedStates.TryGetValue(key, out var seenPainted);
+					if (!shouldEnqueue && newPainted.Count > seenPainted.Count)
+						shouldEnqueue = true;
+
+					if (shouldEnqueue)
+					{
+						var merged = seenPainted != null ? new HashSet<Vector2Int>(seenPainted) : new HashSet<Vector2Int>();
+						foreach (var c in newPainted) 
+							merged.Add(c);
+						visitedStates[key] = merged;
+						queue.Enqueue((newState, merged));
+						if (merged.Count > maxPainted) 
+							maxPainted = merged.Count;
+					}
+				}
+			}
+
+			if (maxPainted >= paintableCount)
+			{
+				EditorUtility.DisplayDialog("Validation OK", $"Maze is solvable. All {paintableCount} cells can be painted by the ball(s).", "OK");
+				hasValidated = true;
+			}
+			else
+				EditorUtility.DisplayDialog("Validation Failed", $"Maze is not solvable. {maxPainted} of {paintableCount} cells are reachable.", "OK");
+		}
+
+		private static string MakeStateKey(List<Vector2Int> state)
+		{
+			return string.Join(" ", state.OrderBy(p => p.x).ThenBy(p => p.y).Select(p => p.x + "," + p.y));
+		}
+
+		// Returns the cell where a ball would stop
+		private Vector2Int GetSlideEnd(Vector2Int pos, Vector2Int dir)
+		{
+			var current = pos;
+			while (true)
+			{
+				var next = current + dir;
+				if (next.x < 0 || next.x >= gridWidth || next.y < 0 || next.y >= gridHeight)
+					return current;
+
+				var nextType = grid[next.x, next.y];
+				if (nextType is NodeType.None or NodeType.Wall or NodeType.Ball)
+					return current;
+
+				current = next;
+			}
 		}
 
 		#endregion

@@ -146,6 +146,7 @@ namespace GridSystem
 			{
 				LevelManager.Instance.CurrentLevel.TotalMoves++;
 				OnMoveCompleted.Invoke(LevelManager.Instance.CurrentLevel.TotalMoves);
+				
 				await UniTask.WhenAll(moveTasks);
 
 				OnPaintCompleted.Invoke(CellCount, TotalColoredCellCount);

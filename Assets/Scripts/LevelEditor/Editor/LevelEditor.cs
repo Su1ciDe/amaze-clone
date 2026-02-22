@@ -227,10 +227,6 @@ namespace LevelEditor.Editor
 				{
 					if (e.button == 0) // Left click
 					{
-						// If placing a ball, remove any existing ball first
-						if (selectedNodeType == NodeType.Ball)
-							RemoveAllBalls();
-
 						grid[x, y] = selectedNodeType;
 						Repaint();
 					}
@@ -256,16 +252,16 @@ namespace LevelEditor.Editor
 			switch (nodeType)
 			{
 				case NodeType.Ball:
-					// Draw white circle
+					// Draw a circle
 					DrawCircle(rect, Color.white);
 					break;
 				case NodeType.Wall:
-					// Draw black square
+					// Draw a square
 					var squareRect = new Rect(rect.x + rect.width * 0.2f, rect.y + rect.height * 0.2f, rect.width * 0.6f, rect.height * 0.6f);
 					EditorGUI.DrawRect(squareRect, Color.black);
 					break;
 				case NodeType.None:
-					// Draw red X
+					// Draw X
 					DrawX(rect, Color.red);
 					break;
 			}
@@ -291,20 +287,6 @@ namespace LevelEditor.Editor
 			Handles.color = color;
 			Handles.DrawLine(topLeft, bottomRight, 3f);
 			Handles.DrawLine(topRight, bottomLeft, 3f);
-		}
-
-		private void RemoveAllBalls()
-		{
-			for (int x = 0; x < gridWidth; x++)
-			{
-				for (int y = 0; y < gridHeight; y++)
-				{
-					if (grid[x, y] == NodeType.Ball)
-					{
-						grid[x, y] = NodeType.Cell;
-					}
-				}
-			}
 		}
 
 		#endregion

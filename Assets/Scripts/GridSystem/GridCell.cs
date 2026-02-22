@@ -1,4 +1,5 @@
-﻿using Interfaces;
+﻿using GamePlay;
+using Interfaces;
 using UnityEngine;
 
 namespace GridSystem
@@ -29,6 +30,11 @@ namespace GridSystem
 		{
 			IsActive = false;
 			modelRenderer.gameObject.SetActive(false);
+		}
+
+		public void ChangeColor(Color color)
+		{
+			modelRenderer.material.color = color;
 		}
 	}
 }

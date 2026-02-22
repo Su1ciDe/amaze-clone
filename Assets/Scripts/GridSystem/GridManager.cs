@@ -1,7 +1,10 @@
+using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
 using GamePlay;
 using Managers;
 using ScriptableObjects;
 using UnityEngine;
+using Utilities;
 
 namespace GridSystem
 {
@@ -18,8 +21,19 @@ namespace GridSystem
 		public float YSpacing => ySpacing;
 
 		private Vector2Int size;
+		private List<Ball> balls = new List<Ball>();
 
 		private float xOffset, yOffset;
+
+		private void OnEnable()
+		{
+			PlayerInputs.OnInput += HandleInput;
+		}
+
+		private void OnDisable()
+		{
+			PlayerInputs.OnInput -= HandleInput;
+		}
 
 		#region Setup
 
@@ -45,6 +59,8 @@ namespace GridSystem
 						var ball = Instantiate(GameManager.Instance.PrefabsSO.BallPrefab);
 						ball.transform.position = cell.transform.position;
 						cell.SetNode(ball);
+						balls.Add(ball);
+						cell.ChangeColor(GameManager.Instance.ColorsSO.Colors[LevelManager.Instance.CurrentLevelData.ColorType]);
 					}
 					else if (levelData.GridCells[x, y] == NodeType.Wall)
 					{
@@ -59,6 +75,79 @@ namespace GridSystem
 
 					gridCells[x, y] = cell;
 				}
+			}
+		}
+
+		#endregion
+
+		#region Movement
+
+		private void HandleInput(Directions direction)
+		{
+			// Check if any ball is currently moving
+			for (var i = 0; i < balls.Count; i++)
+				if (balls[i].IsMoving)
+					return;
+
+			MoveAllBalls(direction).Forget();
+		}
+
+		private async UniTask MoveAllBalls(Directions direction)
+		{
+			var dir = Direction.GetDirection(direction);
+			var moveTasks = new List<UniTask>();
+			bool anyBallMoved = false;
+
+			foreach (var ball in balls)
+			{
+				var currentPos = ball.CurrentGridCell.Coordinates;
+				var targetPos = FindTargetPosition(currentPos, dir);
+
+				if (targetPos != currentPos)
+				{
+					anyBallMoved = true;
+					var targetCell = gridCells[targetPos.x, targetPos.y];
+					moveTasks.Add(ball.MoveToCell(targetCell));
+				}
+			}
+
+			if (anyBallMoved)
+			{
+				LevelManager.Instance.CurrentLevel.TotalMoves++;
+				await UniTask.WhenAll(moveTasks);
+			}
+		}
+
+		private Vector2Int FindTargetPosition(Vector2Int startPos, Vector2Int direction)
+		{
+			var currentPos = startPos;
+
+			while (true)
+			{
+				var nextPos = currentPos + direction;
+
+				// Check if next position is out of bounds
+				if (nextPos.x < 0 || nextPos.x >= size.x || nextPos.y < 0 || nextPos.y >= size.y)
+				{
+					return currentPos;
+				}
+
+				var nextCell = gridCells[nextPos.x, nextPos.y];
+
+				// Check if next cell is inactive (None type)
+				if (!nextCell.IsActive)
+				{
+					return currentPos;
+				}
+
+				// Check if next cell has a wall or another ball
+				if (nextCell.CurrentNode is Wall or Ball)
+				{
+					return currentPos;
+				}
+
+				// Move to next position
+				currentPos = nextPos;
 			}
 		}
 

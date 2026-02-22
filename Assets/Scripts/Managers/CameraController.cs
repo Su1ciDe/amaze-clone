@@ -25,7 +25,7 @@ namespace Managers
 			var level = LevelManager.Instance.CurrentLevel;
 			if (!level) return;
 
-			var levelData = level.CurrentLevelData;
+			var levelData = LevelManager.Instance.CurrentLevelData;
 			if (!levelData) return;
 
 			var gridManager = level.GridManager;

@@ -10,8 +10,8 @@ namespace GridSystem
 {
 	public class GridManager : MonoBehaviour
 	{
-		[SerializeField] private GridCellMatrix gridCells;
-		public GridCellMatrix GridCells => gridCells;
+		public int CellCount { get; private set; }
+		public int TotalColoredCellCount { get; private set; }
 
 		[Header("Grid Settings")]
 		[SerializeField] private Vector2 cellSize = new Vector2(1, 1);
@@ -21,7 +21,8 @@ namespace GridSystem
 		public float YSpacing => ySpacing;
 
 		private Vector2Int size;
-		private List<Ball> balls = new List<Ball>();
+		private GridCellMatrix gridCells;
+		private readonly List<Ball> balls = new List<Ball>();
 
 		private float xOffset, yOffset;
 
@@ -53,6 +54,8 @@ namespace GridSystem
 					cell.Setup(x, y);
 					cell.gameObject.name = x + " - " + y;
 					cell.transform.localPosition = new Vector3(x * (cellSize.x + xSpacing) - xOffset, 0, -y * (cellSize.y + ySpacing) + yOffset);
+					cell.OnColored += OnCellColored;
+					CellCount++;
 
 					if (levelData.GridCells[x, y] == NodeType.Ball)
 					{
@@ -67,15 +70,26 @@ namespace GridSystem
 						var wall = Instantiate(GameManager.Instance.PrefabsSO.WallPrefab);
 						wall.transform.position = cell.transform.position;
 						cell.SetNode(wall);
+						CellCount--;
 					}
 					else if (levelData.GridCells[x, y] == NodeType.None)
 					{
 						cell.DisableCell();
+						CellCount--;
 					}
 
 					gridCells[x, y] = cell;
 				}
 			}
+		}
+
+		private void OnCellColored(GridCell cell)
+		{
+			cell.OnColored -= OnCellColored;
+			TotalColoredCellCount++;
+
+			if (TotalColoredCellCount >= CellCount)
+				LevelManager.Instance.Win();
 		}
 
 		#endregion
@@ -150,20 +164,6 @@ namespace GridSystem
 				currentPos = nextPos;
 				pathCells.Add(gridCells[nextPos.x, nextPos.y]);
 			}
-		}
-
-		private List<GridCell> GetPathCells(Vector2Int startPos, Vector2Int targetPos, Vector2Int direction)
-		{
-			var pathCells = new List<GridCell>();
-			var currentPos = startPos + direction;
-
-			while (currentPos != targetPos + direction)
-			{
-				pathCells.Add(gridCells[currentPos.x, currentPos.y]);
-				currentPos += direction;
-			}
-
-			return pathCells;
 		}
 
 		#endregion

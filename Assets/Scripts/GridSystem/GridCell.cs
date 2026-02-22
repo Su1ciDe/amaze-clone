@@ -1,6 +1,6 @@
-﻿using GamePlay;
-using Interfaces;
+﻿using Interfaces;
 using UnityEngine;
+using UnityEngine.Events;
 
 namespace GridSystem
 {
@@ -9,10 +9,13 @@ namespace GridSystem
 		public bool IsActive { get; set; } = true;
 		public Vector2Int Coordinates { get; set; }
 		public INode CurrentNode { get; set; }
+		public bool IsColored { get; set; } = false;
 
 		[Header("References")]
 		[SerializeField] private MeshRenderer modelRenderer;
 		[SerializeField] private Transform nodeHolder;
+
+		public event UnityAction<GridCell> OnColored = gridCell => { };
 
 		public void Setup(int x, int y)
 		{
@@ -34,7 +37,12 @@ namespace GridSystem
 
 		public void ChangeColor(Color color)
 		{
+			if (IsColored) return;
+
+			IsColored = true;
 			modelRenderer.material.color = color;
+
+			OnColored.Invoke(this);
 		}
 	}
 }

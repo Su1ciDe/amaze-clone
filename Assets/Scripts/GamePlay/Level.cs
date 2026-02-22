@@ -6,7 +6,6 @@ namespace GamePlay
 {
 	public class Level : MonoBehaviour
 	{
-		public LevelDataSO CurrentLevelData { get; private set; }
 		public int TotalMoves { get; set; }
 
 		[SerializeField] private GridManager gridManager;
@@ -15,7 +14,6 @@ namespace GamePlay
 
 		public void Load(LevelDataSO levelData)
 		{
-			CurrentLevelData = levelData;
 			gridManager.Setup(levelData);
 		}
 

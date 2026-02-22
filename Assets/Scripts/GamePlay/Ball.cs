@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Threading;
+using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using DG.Tweening;
 using GridSystem;
@@ -19,6 +20,13 @@ namespace GamePlay
 
 		public event UnityAction OnMoveComplete = () => { };
 
+		private CancellationToken cancellationTokenOnDestroy;
+
+		private void Awake()
+		{
+			cancellationTokenOnDestroy = this.GetCancellationTokenOnDestroy();
+		}
+
 		public async UniTask MoveToCell(List<GridCell> pathCells, Color trailColor, Directions direction)
 		{
 			if (IsMoving) return;
@@ -35,14 +43,11 @@ namespace GamePlay
 
 			// Move to the target cell and color the cells along the path
 			await transform.DOPath(pathCells.ConvertAll(cell => cell.transform.position).ToArray(), GameManager.Instance.GameSettingsSO.BallSpeed).SetSpeedBased(true).SetEase(Ease.InQuad)
-				.OnWaypointChange(waypoint => pathCells[waypoint].ChangeColor(trailColor)).ToUniTask();
+				.OnWaypointChange(waypoint => pathCells[waypoint].ChangeColor(trailColor)).ToUniTask(TweenCancelBehaviour.KillAndCancelAwait, cancellationTokenOnDestroy);
 
 			transform.DOKill();
-			transform.DOScale(new Vector3(transform.localScale.x * 1.5f, transform.localScale.y, transform.localScale.z * 0.5f), .1f).OnComplete(() =>
-			{
-				transform.DOScale(Vector3.one, .1f);
-			});
-			
+			transform.DOScale(new Vector3(transform.localScale.x * 1.5f, transform.localScale.y, transform.localScale.z * 0.5f), .1f).OnComplete(() => { transform.DOScale(Vector3.one, .1f); });
+
 			// Set new cell
 			CurrentGridCell = targetCell;
 			targetCell.CurrentNode = this;

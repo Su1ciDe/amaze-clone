@@ -93,7 +93,7 @@ namespace GridSystem
 
 		private void SetupParticle(ColorType colorType)
 		{
-			paintParticle = Instantiate(GameManager.Instance.PrefabsSO.PaintParticle);
+			paintParticle = Instantiate(GameManager.Instance.PrefabsSO.PaintParticle, transform);
 			var main = paintParticle.main;
 			main.startColor = GameManager.Instance.ColorsSO.Colors[colorType];
 		}
@@ -146,7 +146,7 @@ namespace GridSystem
 			{
 				LevelManager.Instance.CurrentLevel.TotalMoves++;
 				OnMoveCompleted.Invoke(LevelManager.Instance.CurrentLevel.TotalMoves);
-				
+
 				await UniTask.WhenAll(moveTasks);
 
 				OnPaintCompleted.Invoke(CellCount, TotalColoredCellCount);

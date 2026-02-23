@@ -1,9 +1,11 @@
 ﻿using System.Linq;
+using Fiber.AudioSystem;
 using GamePlay;
 using ScriptableObjects;
 using UnityEngine;
 using UnityEngine.Events;
 using Utilities;
+using Utilities.AudioSystem;
 
 namespace Managers
 {
@@ -74,6 +76,8 @@ namespace Managers
 
 		public void Win()
 		{
+			AudioManager.Instance.PlayAudio(AudioName.LevelWin);
+			
 			OnLevelWin?.Invoke();
 		}
 

@@ -22,10 +22,10 @@ namespace LevelEditor.Editor
 		private Vector2 scrollPosition;
 
 		private const int CELL_SIZE = 40;
-		private const string path = "Assets/ScriptableObjects/Levels";
+		private const string PATH = "Assets/ScriptableObjects/Levels";
 
 		private bool hasValidated;
-		
+
 		[MenuItem("Tools/Level Editor")]
 		private static void ShowWindow()
 		{
@@ -68,9 +68,12 @@ namespace LevelEditor.Editor
 			DrawGrid();
 			GUILayout.Space(10);
 			GuiLine();
-
+			GUILayout.Space(10);
+			DrawRandomizer();
+			GUILayout.Space(10);
+			GuiLine();
+			GUILayout.Space(5);
 			DrawValidate();
-			// DrawRandomizer();
 		}
 
 		#region Data
@@ -109,7 +112,7 @@ namespace LevelEditor.Editor
 		private void NewData()
 		{
 			var asset = ScriptableObject.CreateInstance<LevelDataSO>();
-			var assetName = AssetDatabase.GenerateUniqueAssetPath(path + "/LevelData_000.asset");
+			var assetName = AssetDatabase.GenerateUniqueAssetPath(PATH + "/LevelData_000.asset");
 			levelSO = asset;
 
 			AssetDatabase.CreateAsset(asset, assetName);
@@ -176,7 +179,10 @@ namespace LevelEditor.Editor
 
 			GUILayout.Space(50);
 			GUILayout.Label("Paint Color:", GUILayout.Width(75));
+			var previousColor = GUI.backgroundColor;
+			GUI.color = GetColor(selectedColor);
 			selectedColor = (ColorType)EditorGUILayout.EnumPopup(selectedColor, GUILayout.Width(100));
+			GUI.color = previousColor;
 
 			GUILayout.EndHorizontal();
 		}
@@ -309,13 +315,13 @@ namespace LevelEditor.Editor
 
 		private void DrawValidate()
 		{
-			if (GUILayout.Button("Validate", GUILayout.Height(20)))
+			if (GUILayout.Button("Validate", GUILayout.Height(25)))
 			{
 				ValidateMaze();
 			}
 		}
 
-		private void ValidateMaze()
+		private bool ValidateMaze(bool showDialog = true)
 		{
 			// Collect ball positions and paintable cells
 			var ballPositions = new List<Vector2Int>();
@@ -340,23 +346,22 @@ namespace LevelEditor.Editor
 
 			if (ballPositions.Count == 0)
 			{
-				EditorUtility.DisplayDialog("Validation Failed", "The maze has no balls. Add at least one ball.", "OK");
-				return;
+				if (showDialog)
+					EditorUtility.DisplayDialog("Validation Failed", "The maze has no balls. Add at least one ball.", "OK");
+				return false;
 			}
 
 			if (paintableCount == 0)
 			{
-				EditorUtility.DisplayDialog("Validation Failed", "Maze has no paintable cells.", "OK");
-				return;
+				if (showDialog)
+					EditorUtility.DisplayDialog("Validation Failed", "Maze has no paintable cells.", "OK");
+				return false;
 			}
 
 			// BFS over states
 			var cardinalDirs = new[]
 			{
-				Direction.GetDirection(Directions.Right),
-				Direction.GetDirection(Directions.Left),
-				Direction.GetDirection(Directions.Up),
-				Direction.GetDirection(Directions.Down)
+				Direction.GetDirection(Directions.Right), Direction.GetDirection(Directions.Left), Direction.GetDirection(Directions.Up), Direction.GetDirection(Directions.Down)
 			};
 			var initialState = ballPositions.ToList();
 			var initialPainted = new HashSet<Vector2Int>(ballPositions);
@@ -381,7 +386,7 @@ namespace LevelEditor.Editor
 						for (var p = pos;; p += dir)
 						{
 							newPainted.Add(p);
-							if (p == landing) 
+							if (p == landing)
 								break;
 						}
 					}
@@ -394,11 +399,11 @@ namespace LevelEditor.Editor
 					if (shouldEnqueue)
 					{
 						var merged = seenPainted != null ? new HashSet<Vector2Int>(seenPainted) : new HashSet<Vector2Int>();
-						foreach (var c in newPainted) 
+						foreach (var c in newPainted)
 							merged.Add(c);
 						visitedStates[key] = merged;
 						queue.Enqueue((newState, merged));
-						if (merged.Count > maxPainted) 
+						if (merged.Count > maxPainted)
 							maxPainted = merged.Count;
 					}
 				}
@@ -406,11 +411,17 @@ namespace LevelEditor.Editor
 
 			if (maxPainted >= paintableCount)
 			{
-				EditorUtility.DisplayDialog("Validation OK", $"Maze is solvable. All {paintableCount} cells can be painted by the ball(s).", "OK");
+				if (showDialog)
+					EditorUtility.DisplayDialog("Validation OK", $"Maze is solvable. All {paintableCount} cells can be painted by the ball(s).", "OK");
 				hasValidated = true;
+				return true;
 			}
 			else
-				EditorUtility.DisplayDialog("Validation Failed", $"Maze is not solvable. {maxPainted} of {paintableCount} cells are reachable.", "OK");
+			{
+				if (showDialog)
+					EditorUtility.DisplayDialog("Validation Failed", $"Maze is not solvable. {maxPainted} of {paintableCount} cells are reachable.", "OK");
+				return false;
+			}
 		}
 
 		private static string MakeStateKey(List<Vector2Int> state)
@@ -437,6 +448,94 @@ namespace LevelEditor.Editor
 		}
 
 		#endregion
+
+		#region Randomizer
+
+		private float randomPercent = 0.5f;
+		private int maxAttempts = 500;
+
+		private void DrawRandomizer()
+		{
+			GUILayout.BeginHorizontal();
+			GUILayout.Label("Max Try Attempts: ", EditorStyles.boldLabel);
+			maxAttempts = EditorGUILayout.IntField(maxAttempts);
+			GUILayout.EndHorizontal();
+
+			GUILayout.BeginHorizontal();
+			GUILayout.Label("Wall Percentage: " + Mathf.RoundToInt(randomPercent * 100) + "%", EditorStyles.boldLabel);
+			randomPercent = GUILayout.HorizontalSlider(randomPercent, 0f, 1f);
+			GUILayout.EndHorizontal();
+
+			if (GUILayout.Button("Generate Random Maze", GUILayout.Height(25)))
+			{
+				GenerateRandomMaze();
+			}
+		}
+
+		private void GenerateRandomMaze()
+		{
+			var random = new System.Random();
+			bool isSolvable = false;
+
+			for (int attempt = 0; attempt < maxAttempts && !isSolvable; attempt++)
+			{
+				// Initialize grid
+				for (int x = 0; x < gridWidth; x++)
+				{
+					for (int y = 0; y < gridHeight; y++)
+					{
+						grid[x, y] = NodeType.Cell;
+					}
+				}
+
+				// Randomly place walls to create maze-like patterns
+				int wallCount = (int)(gridWidth * gridHeight * randomPercent);
+				for (int i = 0; i < wallCount; i++)
+				{
+					int x = random.Next(0, gridWidth);
+					int y = random.Next(0, gridHeight);
+
+					// Don't place wall at bottom left corner (ball position)
+					if (x == 0 && y == 0)
+						continue;
+
+					grid[x, y] = NodeType.Wall;
+				}
+
+				// Place ball at bottom left corner
+				grid[0, 0] = NodeType.Ball;
+
+				// Check if solvable
+				isSolvable = ValidateMaze(false);
+			}
+
+			if (!isSolvable)
+			{
+				EditorUtility.DisplayDialog("Generation Failed", $"Could not generate a solvable maze after {maxAttempts} attempts. Try again or adjust grid size.", "OK");
+			}
+			else
+			{
+				hasValidated = true;
+			}
+
+			Repaint();
+		}
+
+		#endregion
+
+		private Color GetColor(ColorType itemType)
+		{
+			return itemType switch
+			{
+				ColorType.Green => Color.green,
+				ColorType.Blue => Color.blue,
+				ColorType.Red => Color.red,
+				ColorType.Pink => new Color(1f, 0.55f, 0.85f),
+				ColorType.Purple => new Color(0.5f, 0f, 0.5f),
+				ColorType.Yellow => Color.yellow,
+				_ => Color.white
+			};
+		}
 
 		private void GuiLine(int height = 1)
 		{
